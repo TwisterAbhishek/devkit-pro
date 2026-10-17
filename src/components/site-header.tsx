@@ -199,7 +199,11 @@ export default function SiteHeader({
 
   return (
     <>
-    {showSidebar && <GlobalSidebar mode="collapsible" />}
+    {showSidebar && (
+      <div className="lg:hidden">
+        <GlobalSidebar mode="collapsible" />
+      </div>
+    )}
     <header
       className="sticky top-0 z-40 flex min-h-[76px] flex-wrap
         items-center justify-between gap-3 border-b border-[var(--border)]
