@@ -4,7 +4,6 @@
 import { useState } from "react";
 import {
   Activity,
-  ArrowLeftRight,
   Bug,
   CheckCircle2,
   GitCompare,
@@ -33,6 +32,15 @@ export default function ApiDebuggingWorkbench() {
     "request" | "comparison" | "diagnostics"
   >("request");
 
+  const [headers, setHeaders] = useState([
+    { id: 1, key: "Accept", value: "application/json" },
+  ]);
+  
+  const [nextHeaderId, setNextHeaderId] = useState(2);
+  const [body, setBody] = useState(
+    JSON.stringify({ name: "John Doe", email: "john@example.com" }, null, 2)
+  );
+
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<ApiResponse | null>(null);
   const [requestError, setRequestError] = useState("");
@@ -43,44 +51,80 @@ export default function ApiDebuggingWorkbench() {
     try {
       endpoint = new URL(url.trim());
 
-      if (!["http:", "https:"].includes(endpoint.protocol)) {
-        throw new Error("Only HTTP and HTTPS URLs are supported.");
+      if (!['http:', 'https:'].includes(endpoint.protocol)) {
+        throw new Error('Only HTTP and HTTPS URLs are supported.');
       }
     } catch {
-      setRequestError("Enter a valid HTTP or HTTPS URL.");
+      setRequestError('Enter a valid HTTP or HTTPS URL.');
       setResponse(null);
       return;
     }
 
+    const sendsBody = ['POST', 'PUT', 'PATCH'].includes(method);
+    let requestBody: string | undefined;
+
+    if (sendsBody) {
+      try {
+        JSON.parse(body);
+        requestBody = body;
+      } catch {
+        setRequestError('Invalid JSON in request body. Please correct it before sending.');
+        setResponse(null);
+        return;
+      }
+    }
+
+    const requestHeaders: Record<string, string> = {};
+
+    for (const header of headers) {
+      const key = header.key.trim();
+      if (key) {
+        requestHeaders[key] = header.value;
+      }
+    }
+
+    const hasHeader = (name: string) =>
+      Object.keys(requestHeaders).some(
+        (key) => key.toLowerCase() === name.toLowerCase()
+      );
+
+    if (!hasHeader('Accept')) {
+      requestHeaders.Accept = 'application/json, text/plain, */*';
+    }
+
+    // Only add Content-Type when a request body is being sent.
+    if (sendsBody && !hasHeader('Content-Type')) {
+      requestHeaders['Content-Type'] = 'application/json';
+    }
+
     setIsLoading(true);
     setResponse(null);
-    setRequestError("");
+    setRequestError('');
 
     const startedAt = performance.now();
 
     try {
       const result = await fetch(endpoint.toString(), {
         method,
-        headers: {
-          Accept: "application/json, text/plain, */*",
-        },
+        headers: requestHeaders,
+        ...(requestBody !== undefined ? { body: requestBody } : {}),
       });
 
-      const body = await result.text();
+      const responseBody = await result.text();
       const duration = Math.round(performance.now() - startedAt);
 
       setResponse({
         status: result.status,
         statusText: result.statusText,
         duration,
-        body,
+        body: responseBody,
         headers: Object.fromEntries(result.headers.entries()),
       });
     } catch (error) {
       setRequestError(
         error instanceof Error
           ? `${error.message}. The request may be blocked by CORS or a network error.`
-          : "The request failed due to an unknown error."
+          : 'The request failed due to an unknown error.'
       );
     } finally {
       setIsLoading(false);
@@ -235,6 +279,103 @@ export default function ApiDebuggingWorkbench() {
                 </button>
               </div>
 
+            {/* Request Headers */}
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">Request headers</h3>
+
+                    <button
+                    type="button"
+                    onClick={() => {
+                        setHeaders((current) => [
+                        ...current,
+                        { id: nextHeaderId, key: "", value: "" },
+                        ]);
+                        setNextHeaderId((id) => id + 1);
+                    }}
+                    className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--surface-muted)]"
+                    >
+                    + Add header
+                    </button>
+                </div>
+
+                {headers.map((header) => (
+                    <div
+                    key={header.id}
+                    className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]"
+                    >
+                    <input
+                        value={header.key}
+                        onChange={(event) =>
+                        setHeaders((current) =>
+                            current.map((item) =>
+                            item.id === header.id
+                                ? { ...item, key: event.target.value }
+                                : item
+                            )
+                        )
+                        }
+                        placeholder="Header name"
+                        aria-label="Header name"
+                        className="h-10 min-w-0 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm"
+                    />
+
+                    <input
+                        value={header.value}
+                        onChange={(event) =>
+                        setHeaders((current) =>
+                            current.map((item) =>
+                            item.id === header.id
+                                ? { ...item, value: event.target.value }
+                                : item
+                            )
+                        )
+                        }
+                        placeholder="Header value"
+                        aria-label="Header value"
+                        className="h-10 min-w-0 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm"
+                    />
+
+                    <button
+                        type="button"
+                        onClick={() =>
+                        setHeaders((current) =>
+                            current.filter((item) => item.id !== header.id)
+                        )
+                        }
+                        aria-label="Remove header"
+                        className="h-10 rounded-lg px-3 text-sm text-red-500 hover:bg-red-500/10"
+                    >
+                        Remove
+                    </button>
+                    </div>
+                ))}
+            </div>
+
+            {/* Request Body */}
+            {["POST", "PUT", "PATCH"].includes(method) && (
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Request body</h3>
+                <span className="text-xs text-[var(--muted)]">JSON</span>
+                </div>
+
+                <textarea
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                spellCheck={false}
+                aria-label="JSON request body"
+                placeholder={'{\n  "name": "John Doe"\n}'}
+                rows={9}
+                className="w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 font-mono text-sm leading-6 outline-none focus:border-blue-500"
+                />
+
+                <p className="text-xs text-[var(--muted)]">
+                Enter a valid JSON object or array. The body is sent with POST, PUT, and PATCH requests.
+                </p>
+            </div>
+            )}
+
               <div className="space-y-4">
                 {requestError && (
                     <div
@@ -347,8 +488,8 @@ export default function ApiDebuggingWorkbench() {
           <p className="text-sm font-medium">Privacy-conscious by design</p>
           <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
             Use trusted endpoints and avoid sending credentials or sensitive
-            data to services you do not control. Requests and response handling
-            will be implemented in a subsequent step.
+            data to services you do not control. Requests are sent directly from your browser. Avoid sending credentials or sensitive
+            data to services you do not trust.
           </p>
         </div>
 
