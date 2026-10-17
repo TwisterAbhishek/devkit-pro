@@ -14,8 +14,17 @@ import {
   Save,
   ShieldCheck,
 } from "lucide-react";
+import ApiResponseComparison from "@/components/tools/api-response-comparison";
 
 type RequestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+type ApiResponse = {
+    status: number;
+    statusText: string;
+    duration: number;
+    body: string;
+    headers: Record<string, string>;
+  };
 
 export default function ApiDebuggingWorkbench() {
   const [method, setMethod] = useState<RequestMethod>("GET");
@@ -23,6 +32,60 @@ export default function ApiDebuggingWorkbench() {
   const [activeTab, setActiveTab] = useState<
     "request" | "comparison" | "diagnostics"
   >("request");
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [response, setResponse] = useState<ApiResponse | null>(null);
+  const [requestError, setRequestError] = useState("");
+
+  const sendRequest = async () => {
+    let endpoint: URL;
+
+    try {
+      endpoint = new URL(url.trim());
+
+      if (!["http:", "https:"].includes(endpoint.protocol)) {
+        throw new Error("Only HTTP and HTTPS URLs are supported.");
+      }
+    } catch {
+      setRequestError("Enter a valid HTTP or HTTPS URL.");
+      setResponse(null);
+      return;
+    }
+
+    setIsLoading(true);
+    setResponse(null);
+    setRequestError("");
+
+    const startedAt = performance.now();
+
+    try {
+      const result = await fetch(endpoint.toString(), {
+        method,
+        headers: {
+          Accept: "application/json, text/plain, */*",
+        },
+      });
+
+      const body = await result.text();
+      const duration = Math.round(performance.now() - startedAt);
+
+      setResponse({
+        status: result.status,
+        statusText: result.statusText,
+        duration,
+        body,
+        headers: Object.fromEntries(result.headers.entries()),
+      });
+    } catch (error) {
+      setRequestError(
+        error instanceof Error
+          ? `${error.message}. The request may be blocked by CORS or a network error.`
+          : "The request failed due to an unknown error."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -162,44 +225,102 @@ export default function ApiDebuggingWorkbench() {
                 />
 
                 <button
-                  type="button"
-                  disabled={!url.trim()}
-                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  title="Request execution will be implemented in the next step"
+                type="button"
+                onClick={sendRequest}
+                disabled={!url.trim() || isLoading}
+                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Play size={16} />
-                  Send request
+                <Play size={16} />
+                {isLoading ? "Sending..." : "Send request"}
                 </button>
               </div>
 
-              <div className="rounded-xl border border-dashed border-[var(--border)] p-6 text-center sm:p-10">
-                <Activity className="mx-auto mb-3 text-[var(--muted)]" size={28} />
+              <div className="space-y-4">
+                {requestError && (
+                    <div
+                    role="alert"
+                    className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-500"
+                    >
+                    <p className="font-semibold">Request failed</p>
+                    <p className="mt-1 break-words">{requestError}</p>
+                    </div>
+                )}
 
-                <h3 className="font-medium">Response workspace</h3>
+                {response && (
+                    <>
+                    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border)] p-4">
+                        <span
+                        className={`rounded-lg px-3 py-1 text-sm font-semibold ${
+                            response.status >= 200 && response.status < 300
+                            ? "bg-emerald-500/10 text-emerald-500"
+                            : "bg-red-500/10 text-red-500"
+                        }`}
+                        >
+                        {response.status} {response.statusText}
+                        </span>
 
-                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
-                  Request status, response headers, timing, and formatted JSON
-                  will appear here once request execution is connected.
-                </p>
-              </div>
+                        <span className="text-sm text-[var(--muted)]">
+                        {response.duration} ms
+                        </span>
+
+                        <span className="text-sm text-[var(--muted)]">
+                        {response.body.length} characters
+                        </span>
+                    </div>
+
+                    <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+                        <div className="border-b border-[var(--border)] px-4 py-3 font-semibold">
+                        Response body
+                        </div>
+
+                        <pre className="max-h-[500px] overflow-auto p-4 text-sm leading-6">
+                        <code>
+                            {(() => {
+                            try {
+                                return JSON.stringify(JSON.parse(response.body), null, 2);
+                            } catch {
+                                return response.body || "(Empty response body)";
+                            }
+                            })()}
+                        </code>
+                        </pre>
+                    </div>
+
+                    <details className="rounded-xl border border-[var(--border)] p-4">
+                        <summary className="cursor-pointer text-sm font-semibold">
+                        Response headers
+                        </summary>
+
+                        <pre className="mt-3 overflow-auto text-xs leading-6">
+                        {JSON.stringify(response.headers, null, 2)}
+                        </pre>
+                    </details>
+                    </>
+                )}
+
+                {!response && !requestError && (
+                    <div className="rounded-xl border border-dashed border-[var(--border)] p-6 text-center sm:p-10">
+                    <Activity
+                        className="mx-auto mb-3 text-[var(--muted)]"
+                        size={28}
+                    />
+
+                    <h3 className="font-medium">
+                        {isLoading ? "Waiting for response..." : "Response workspace"}
+                    </h3>
+
+                    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
+                        {isLoading
+                        ? "Your request is in progress."
+                        : "HTTP status, response time, headers, and response body will appear here."}
+                    </p>
+                    </div>
+                )}
+                </div>
             </>
           )}
 
-          {activeTab === "comparison" && (
-            <div className="rounded-xl border border-dashed border-[var(--border)] p-6 text-center sm:p-10">
-              <ArrowLeftRight
-                className="mx-auto mb-3 text-[var(--muted)]"
-                size={28}
-              />
-
-              <h2 className="font-semibold">Compare API responses</h2>
-
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
-                The comparison engine will highlight added fields, removed
-                fields, and changed values between two JSON responses.
-              </p>
-            </div>
-          )}
+            {activeTab === "comparison" && <ApiResponseComparison />}
 
           {activeTab === "diagnostics" && (
             <div className="rounded-xl border border-dashed border-[var(--border)] p-6 text-center sm:p-10">
