@@ -69,7 +69,16 @@ const groups = [
     name: "API Tools",
     icon: Send,
     tools: [
-      { name: "API Request Tester", href: "/tools/api-request-tester", icon: Send },
+      {
+        name: "API Request Tester",
+        href: "/tools/api-request-tester",
+        icon: Send,
+      },
+      {
+        name: "API Debugging Workbench",
+        href: "/tools/api-debugging-workbench",
+        icon: Activity,
+      },
     ],
   },
   {

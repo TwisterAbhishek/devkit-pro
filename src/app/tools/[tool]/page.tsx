@@ -14,6 +14,7 @@ import DiffChecker from "@/components/tools/diff-checker";
 import ColorConverter from "@/components/tools/color-converter";
 import GradientGenerator from "@/components/tools/gradient-generator";
 import CodePlayground from "@/components/tools/code-playground";
+import ApiDebuggingWorkbench from "@/components/tools/api-debugging-workbench";
 
 const availableTools = [
   "code-beautifier",
@@ -24,6 +25,7 @@ const availableTools = [
   "jwt-decoder",
   "hash-generator",
   "api-request-tester",
+  "api-debugging-workbench",
   "markdown-editor",
   "sql-formatter",
   "diff-checker",
@@ -36,6 +38,11 @@ const availableTools = [
 type ToolSlug = (typeof availableTools)[number];
 
 const metadataByTool: Record<ToolSlug, Metadata> = {
+  "api-debugging-workbench": {
+    title: "API Debugging Workbench | DevKit Pro",
+    description:
+      "Debug APIs, compare JSON responses, and investigate integration issues in one developer workspace.",
+  },
   "code-playground": {
     title: "HTML/CSS/JS Playground",
     description:
@@ -163,7 +170,11 @@ export default async function UtilityPage({
                               ? "CSS Gradient Generator"
                               : tool === "code-playground"
                                 ? "HTML/CSS/JS Playground"
-                                : "JSON Formatter"
+                                : tool === "code-playground"
+                                  ? "HTML/CSS/JS Playground"
+                                  : tool === "api-debugging-workbench"
+                                    ? "API Debugging Workbench"
+                                    : "JSON Formatter"
                                 }
 />
 
@@ -199,6 +210,8 @@ export default async function UtilityPage({
         )
         : tool === "code-playground" ? (
           <CodePlayground />
+        ) : tool === "api-debugging-workbench" ? (
+          <ApiDebuggingWorkbench />
         ) : (
           <UtilityTool
             slug={

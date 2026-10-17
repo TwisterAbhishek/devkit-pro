@@ -76,6 +76,12 @@ const tools = [
     icon: Send,
   },
   {
+    name: "API Debugging Workbench",
+    category: "API Tools",
+    href: "/tools/api-debugging-workbench",
+    icon: Send,
+  },
+  {
     name: "Hash Generator",
     category: "Generators",
     href: "/tools/hash-generator",

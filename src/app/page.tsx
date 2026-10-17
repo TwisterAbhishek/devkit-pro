@@ -180,6 +180,16 @@ const tools = [
     tag: "New",
     href: "/tools/code-playground",
   },
+  {
+    name: "API Debugging Workbench",
+    description:
+      "Compare API responses and investigate integration issues in one workspace.",
+    category: "API Tools",
+    icon: Activity,
+    color: "cyan",
+    tag: "New",
+    href: "/tools/api-debugging-workbench",
+  },
 ];
 
 const colorClasses: Record<string, string> = {
