@@ -213,17 +213,19 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <GlobalSidebar
-        mode="static"
-        activeCategory={activeCategory}
-        onCategorySelect={(category) => {
-          setActiveCategory(category);
-          setQuery("");
-        }}
-      />
+      <div className="hidden lg:block">
+        <GlobalSidebar
+          mode="static"
+          activeCategory={activeCategory}
+          onCategorySelect={(category) => {
+            setActiveCategory(category);
+            setQuery("");
+          }}
+        />
+      </div>
 
       <div className="min-h-screen lg:pl-[260px]">
-      <SiteHeader breadcrumb={activeCategory} showSidebar={false} />
+  <SiteHeader breadcrumb={activeCategory} showSidebar={true} />
 
         <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-8 sm:py-10">
           <section className="mt-2">
